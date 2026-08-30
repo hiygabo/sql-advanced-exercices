@@ -28,7 +28,7 @@ BEGIN
 	WHERE numero_cuenta = num_cuenta_destino;
 	
 	IF existe_cuenta_destino = 0 THEN
-		DBMS_OUTPUT.PUT_LINE('NO EXISTE LA CUENTA DESTINO' || num_cuenta_destino);
+		DBMS_OUTPUT.PUT_LINE('ERROR: La cuenta destino' || ' ' ||num_cuenta_destino || ' ' || 'no existe');
 	END IF;
 	
 	IF saldo_origen >= 0 THEN
@@ -46,9 +46,9 @@ BEGIN
 	END IF;
 EXCEPTION
 	WHEN NO_DATA_FOUND THEN 
-		DBMS_OUTPUT.PUT_LINE('ERROR SIN DATOS ENCONTRADOS');
+		DBMS_OUTPUT.PUT_LINE('ERROR:SIN DATOS ENCONTRADOS');
 	WHEN OTHERS THEN
-		DBMS_OUTPUT.PUT_LINE('ERROR');
+		DBMS_OUTPUT.PUT_LINE('ERROR' || SQLERRM);
 		ROLLBACK;
 	
 END;
@@ -87,7 +87,7 @@ BEGIN
 	WHERE nombre_sucursal = nom_sucursal;
 
 	IF existe_sucursal = 0 THEN 
-		DBMS_OUTPUT.PUT_LINE('La sucursal : ' || ' ' || nom_sucursal || ' no existe');
+		DBMS_OUTPUT.PUT_LINE('Error: La sucursal : ' || ' ' || nom_sucursal || ' ' ||'no existe');
 		RETURN;
 	END IF;
 	
@@ -125,7 +125,7 @@ BEGIN
 	
 	EXCEPTION
 	WHEN DUP_VAL_ON_INDEX THEN 
-		DBMS_OUTPUT.PUT_LINE('ERROR EL NUMERO DE CUENTA' || num_cuenta || 'YA EXISTE');
+		DBMS_OUTPUT.PUT_LINE('ERROR: la cuenta' || num_cuenta || 'ya existe');
 		ROLLBACK;
 	WHEN OTHERS THEN
 		DBMS_OUTPUT.PUT_LINE('ERROR CRITICO' || SQLERRM);
@@ -140,5 +140,125 @@ END;
 BEGIN 
 	sp_ejercicio_2(100032, 'Zona Sur', 1800, 'Josue Terrazas', 'Calle 34', 'La Paz');
 END;
+
+
+--3. DADO EL NOMBRE DE UNA SUCURSAL, EL NOMBRE DE UN CLIENTE
+-- Y UN IMPORTE SOLICITADO, OTORGAR UN NUEVO PRESTAMO
+-- SIEMPRE QUE LA SUMA DE LOS IMPORTES YA OTORGADOS EN ESA SUCURSAL
+--INCLUYENDO EL NUEVO NO SUPERE EL 80% DEL ACTIVO DE LA SUCURSAL
+-- CASO CONTRARIO INFORMAR QUE EL PRESTAMO NO PUEDE OTORGARSE
+
+CREATE OR REPLACE PROCEDURE sp_ejercicio_3 (p_nombre_sucursal VARCHAR2, p_nombre_cliente VARCHAR2, p_importe NUMBER)
+AS
+	existe_sucursal NUMBER;
+	existe_cliente NUMBER;
+	nuevo_id_prestamo NUMBER;
+	suma_importe NUMBER;
+	activo_sucursal NUMBER;
+BEGIN
+	SELECT COUNT(*) INTO existe_sucursal
+	FROM sucursal
+	WHERE nombre_sucursal = p_nombre_sucursal;
+
+	IF existe_sucursal = 0 THEN
+		DBMS_OUTPUT.PUT_LINE('ERROR: La sucursal: ' || ' ' || p_nombre_sucursal || '' || 'no existe');
+		RETURN;
+	END IF;
+	
+	SELECT COUNT(*) INTO existe_cliente
+	FROM cliente
+	WHERE nombre_cliente = p_nombre_cliente;
+	
+	IF existe_cliente = 0 THEN
+		DBMS_OUTPUT.PUT_LINE('ERROR: El cliente: ' || ' ' || p_nombre_cliente || ' ' || 'no existe' );
+		RETURN;
+	END IF;
+	
+	SELECT NVL(SUM(importe),0) INTO suma_importe
+	FROM prestamo
+	WHERE nombre_sucursal = p_nombre_sucursal;
+	
+	SELECT activo INTO activo_sucursal
+	FROM sucursal 
+	WHERE nombre_sucursal = p_nombre_sucursal;
+	
+	IF (suma_importe + p_importe ) <=  (activo_sucursal * 0.8) THEN 
+		SELECT NVL(MAX(numero_prestamo),0) + 1 INTO nuevo_id_prestamo 
+		FROM prestamo;
+	
+		INSERT INTO prestamo (numero_prestamo, nombre_sucursal, importe)
+		VALUES (nuevo_id_prestamo, p_nombre_sucursal, p_importe);
+	
+		INSERT INTO prestatario(nombre_cliente, numero_prestamo)
+		VALUES (p_nombre_cliente, nuevo_id_prestamo); 
+		COMMIT;
+		DBMS_OUPUT.PUT_LINE('PRESTAMO REGISTRADO EXITOSAMENTE');
+	ELSE 
+		DBMS_OUTPUT.PUT_LINE('El prestamo no puede otorgarse');
+		RETURN;
+	END IF;
+		
+		
+	EXCEPTION
+	WHEN NO_DATA_FOUND THEN
+		DBMS_OUTPUT.PUT_LINE('ERROR: SIN DATOS ENCONTRADOS');
+	WHEN OTHERS THEN
+		DBMS_OUTPUT.PUT_LINE('ERROR CRITICO: ' || SQLERRM);
+		ROLLBACK;
+	
+END;
+
+
+--EJECUCION--
+BEGIN
+	sp_ejercicio_3('San Pedro','Gabriel Andia', 20000);
+END;
+
+--4. DADO UN NÚMERO DE CUENTA, CERRARLA:
+-- VERIFICAR QUE EL SALDO SEA IGUAL A CERO, ELIMINAR
+-- SUS RELACIONES CON LOS CLIENTES TITULARES Y
+-- FINALMENTE ELIMINAR EL REGISTRO DE LA CUENTA
+-- SI EL SALDO NO ES CERO, INFORMAR QUE LA CUENTA 
+-- NO PUEDE CERRARSE
+
+CREATE OR REPLACE PROCEDURE sp_ejercicio_4 (p_numero_cuenta NUMBER)
+AS
+	saldo_verificado NUMBER;
+	existe_cuenta NUMBER;
+BEGIN
+	SELECT COUNT(*) INTO existe_cuenta
+	FROM cuenta 
+	WHERE numero_cuenta = p_numero_cuenta;
+
+	IF existe_cuenta = 0 THEN
+		DBMS_OUTPUT.PUT_LINE('ERROR: La cuenta ' || ' ' || p_numero_cuenta || ' no existe');
+		RETURN;
+	END IF;
+	
+	SELECT saldo INTO saldo_verificado
+	FROM cuenta
+	WHERE numero_cuenta = p_numero_cuenta;
+	
+	IF saldo_verificado = 0 THEN
+		DELETE FROM impositor 
+		WHERE numero_cuenta = p_numero_cuenta;
+	
+		DELETE FROM cuenta
+		WHERE numero_cuenta = p_numero_cuenta;
+		COMMIT;
+		DBMS_OUTPUT.PUT_LINE('Exito: la cuenta ' || p_numero_cuenta || ' fue cerrada y eliminada');
+	ELSE
+		DBMS_OUTPUT.PUT_LINE('Error: no se puede eliminar la cuenta, esta tiene un saldo');
+		RETURN;
+	END IF;
+		
+	EXCEPTION
+		WHEN NO_DATA_FOUND THEN
+			DBMS_OUTPUT.PUT_LINE('ERROR: SIN DATOS ENCONTRADOS');
+		WHEN OTHERS THEN 
+			DBMS_OUTPUT.PUT_LINE('ERROR CRITICO: '|| SQLERRM);
+			ROLLBACK;
+END;
+--EJECUCION--
 
 
