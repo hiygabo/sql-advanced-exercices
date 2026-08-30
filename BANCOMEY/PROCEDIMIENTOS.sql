@@ -1,16 +1,10 @@
-SELECT * FROM IMPOSITOR I ;
-SELECT * FROM CLIENTE C ;
-SELECT * FROM cuenta;
-SELECT * FROM sucursal;
-SELECT * FROM prestamo;
-
 --PROCEDIMIENTOS--
---1. Dado el número de una cuenta origen, el número de una cuenta destino y un monto, 
---transferir el monto de la cuenta origen a la cuenta destino. 
---Debe validar que la cuenta origen tenga saldo suficiente antes 
---de realizar el movimiento; 
---si no lo tiene, informar el problema 
---sin modificar ningún saldo.
+--1. DADO EL NÚMERO DE UNA CUENTA ORIGEN, EL NÚMERO DE UNA CUENTA DESTINO Y UN MONTO, 
+--TRANSFERIR EL MONTO DE LA CUENTA ORIGEN A LA CUENTA DESTINO. 
+--DEBE VALIDAR QUE LA CUENTA ORIGEN TENGA SALDO SUFICIENTE 
+--ANTES DE REALIZAR EL MOVIMIENTO
+--SI NO LO TIENE INFORMAR EL PROBLEMA (EXCEPCIONES) 
+--SIN MODIFICAR NINGUN SALDO.
 
 
 CREATE OR REPLACE PROCEDURE sp_ejercicio_1 (num_cuenta_origen NUMBER, num_cuenta_destino NUMBER, monto NUMBER )
