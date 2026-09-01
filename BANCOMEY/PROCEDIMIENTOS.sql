@@ -260,5 +260,61 @@ BEGIN
 			ROLLBACK;
 END;
 --EJECUCION--
+BEGIN
+	sp_ejercicio_4(100004);
+END;
+
+
+--5. DADO UN NÚMERO DE PRESATAMO Y UN MONTO DE PAGO
+-- REDUCIR EL IMPORTE PENDIENTE EN ESE MONTO.
+-- SI EL PAGO CUBRE EL IMPORTE PENDIENTE, EL
+-- PRESTAMO DEBE DARSE DE BAJA JUNTO CON SUS RELACIONES
+-- CON LOS CLIENTES PRESTATARIOS
+-- INFORMAR EN CADA CASO SI QUEDO CANCELADO
+-- O SI AUN TIENE SALDO PENDIENTE
+
+CREATE OR REPLACE PROCEDURE sp_ejercicio_5(p_numero_prestamo NUMBER, p_monto_pago NUMBER)
+AS
+	existe_prestamo NUMBER;
+	importe_final NUMBER;
+BEGIN
+	SELECT COUNT(*) INTO existe_prestamo
+	FROM prestamo
+	WHERE numero_prestamo = p_numero_prestamo;
+
+	IF existe_prestamo = 0 THEN
+		DBMS_OUTPUT.PUT_LINE('Error: el presamo: ' || ' ' || p_numero_prestamo || ' no existe');
+		RETURN;
+	END IF;
+	
+	SELECT importe INTO importe_final
+	FROM prestamo
+	WHERE numero_prestamo = p_numero_prestamo;
+	
+	IF p_monto_pago >= importe_final THEN
+		
+		DELETE FROM prestatario 
+		WHERE numero_prestamo = p_numero_prestamo;
+		
+		DELETE FROM prestamo
+		WHERE numero_prestamo = p_numero_prestamo;
+		DBMS_OUTPUT.PUT_LINE('El prestamo fue cancelado');
+		COMMIT;
+		
+	ELSE 
+		UPDATE prestamo 
+		SET importe = importe - p_monto_pago
+		WHERE numero_prestamo = p_numero_prestamo;
+		DBMS_OUTPUT.PUT_LINE('Aun tiene deuda(s) pendiente');
+		COMMIT;
+	END IF;
+		
+	EXCEPTION
+		WHEN NO_DATA_FOUND THEN
+			DBMS_OUTPUT.PUT_LINE('ERROR: SIN DATOS ENCONTRADOS');
+		WHEN OTHERS THEN 
+			DBMS_OUTPUT.PUT_LINE('ERROR CRITICO: '|| SQLERRM);
+			ROLLBACK;
+END;
 
 
