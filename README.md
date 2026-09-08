@@ -1,1 +1,3 @@
 # SQL ADVANCED EXCERCIES
+
+# sql
